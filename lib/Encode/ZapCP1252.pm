@@ -1,12 +1,13 @@
 package Encode::ZapCP1252;
 
-# $Id: ZapCP1252.pm 3701 2008-05-02 18:27:05Z david $
+# $Id: ZapCP1252.pm 3705 2008-05-02 18:36:34Z david $
 
 use strict;
 require Exporter;
 use vars qw($VERSION @ISA @EXPORT);
+use 5.006_002;
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 @ISA     = qw(Exporter);
 @EXPORT  = qw(zap_cp1252 fix_cp1252);
 
