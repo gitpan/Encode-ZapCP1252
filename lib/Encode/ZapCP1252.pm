@@ -1,13 +1,13 @@
 package Encode::ZapCP1252;
 
-# $Id: ZapCP1252.pm 3705 2008-05-02 18:36:34Z david $
+# $Id: ZapCP1252.pm 3952 2008-05-30 16:55:42Z david $
 
 use strict;
 require Exporter;
 use vars qw($VERSION @ISA @EXPORT);
 use 5.006_002;
 
-$VERSION = '0.11';
+$VERSION = '0.12';
 @ISA     = qw(Exporter);
 @EXPORT  = qw(zap_cp1252 fix_cp1252);
 
@@ -103,7 +103,7 @@ Encode::ZapCP1252 - Zap Windows Western Gremlins
 
 =head1 Synopsis
 
-  use Encode::ZapCP152;
+  use Encode::ZapCP1252;
 
   zap_cp1252 $latin1_text;
   fix_cp1252 $utf8_text;
@@ -228,7 +228,7 @@ This module is stored in an open repository at the following address:
 
 L<https://svn.kineticode.com/Encode-ZapCP1252/trunk/>
 
-Patches against SVN::Notify are welcome. Please send bug reports to
+Patches against Encode::ZapCP1252 are welcome. Please send bug reports to
 <bug-encode-zapcp1252@rt.cpan.org>.
 
 =head1 Author
