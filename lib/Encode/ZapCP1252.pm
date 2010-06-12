@@ -5,7 +5,7 @@ require Exporter;
 use vars qw($VERSION @ISA @EXPORT);
 use 5.006_002;
 
-$VERSION = '0.20';
+$VERSION = '0.30';
 @ISA     = qw(Exporter);
 @EXPORT  = qw(zap_cp1252 fix_cp1252);
 use constant ENCODE => eval { require Encode };
@@ -72,20 +72,20 @@ our %utf8_for = (
     "\x9f" => 'Ÿ',    # LATIN CAPITAL LETTER Y WITH DIAERESIS
 );
 
-sub zap_cp1252 ($) {
-    if (ENCODE && Encode::is_utf8($_[0])) {
-        _tweak_decoded(\%ascii_for, $_[0]);
-    } else {
-        $_[0] =~ s/([\x80-\x9f])/$ascii_for{$1} || $1/emxsg;
-    }
-    return $_[0] if defined wantarray;
+BEGIN {
+    my $proto = $] >= 5.010000 ? '_' : '$';
+    eval "sub zap_cp1252($proto) { _tweakit(\\%ascii_for, \$_[0]) }";
+    eval "sub fix_cp1252($proto) { _tweakit(\\%utf8_for, \$_[0]) }";
 }
 
-sub fix_cp1252 ($) {
+sub _tweakit {
+    my $table = shift;
+    return unless defined $_[0];
+    local $_[0] = $_[0] if defined wantarray;
     if (ENCODE && Encode::is_utf8($_[0])) {
-        _tweak_decoded(\%utf8_for, $_[0]);
+        _tweak_decoded($table, $_[0]);
     } else {
-        $_[0] =~ s/([\x80-\x9f])/$utf8_for{$1} || $1/emxsg;
+        $_[0] =~ s{([\x80-\x9f])}{$table->{$1} || $1}emxsg;
     }
     return $_[0] if defined wantarray;
 }
@@ -123,17 +123,23 @@ Encode::ZapCP1252 - Zap Windows Western Gremlins
 
   use Encode::ZapCP1252;
 
+  # Zap or fix in-place.
   zap_cp1252 $latin1_text;
   fix_cp1252 $utf8_text;
 
+  # Zap or fix copy.
+  my $clean_latin1 = zap_cp1252 $latin1_text;
+  my $fixed_utf8   = fix_cp1252 $utf8_text;
+
 =head1 Description
 
-Have you ever been processing a Web form submit, assuming that the incoming
-text was encoded in ISO-8859-1 (Latin-1), only to end up with a bunch of junk
-because someone pasted in content from Microsoft Word? Well, this is because
-Microsoft uses a superset of the Latin-1 encoding called "Windows Western" or
-"CP1252". So mostly things will come out right, but a few things--like curly
-quotes, m-dashes, elipses, and the like--will not. The differences are
+Have you ever been processing a Web form submit for feed, assuming that the
+incoming text was encoded as specified in the Content-Type header, or in the
+XML declaration, only to end up with a bunch of junk because someone pasted in
+content from Microsoft Word? Well, this is because Microsoft uses a superset
+of the Latin-1 encoding called "Windows Western" or "CP1252". If the specified
+encoding is Latin-1, mostly things will come out right, but a few things--like
+curly quotes, m-dashes, ellipses, and the like--may not. The differences are
 well-known; you see a nice chart at documenting the differences on
 L<Wikipedia|http://en.wikipedia.org/wiki/Windows-1252>.
 
@@ -145,46 +151,58 @@ without losing a thing, just like this:
   $text = decode 'cp1252', $text, 1;
 
 But I know that there are those of you out there stuck with Latin-1 and who
-don't want any junk charactrs from Word users, and that's where this module
-comes in. Its C<zap_cp1252> function will zap those CP1252 gremlins for
-you, turning them into their appropriate ASCII approximations.
+don't want any junk characters from Word users. That's where this module comes
+in. Its C<zap_cp1252> function will zap those CP1252 gremlins for you, turning
+them into their appropriate ASCII approximations.
 
-Another case that can occaisionally come up is when you I<are> using UTF-8,
-and you're reading in text that I<claims> to be UTF-8, but it I<still> ends up
-with some CP1252 gremlins mixed in with true UTF-8 characters. I've seen
-examples of just this sort of thing when processing GMail messages and
-attempting to insert them into a UTF-8 database. Doesn't work so well. So this
-module also offers C<fix_cp1252>, which converts those CP1252 gremlines into
-their UTF-8 equivalents.
+Another case that can occasionally come up is when you're reading reading in
+text that I<claims> to be UTF-8, but it I<still> ends up with some CP1252
+gremlins mixed in with properly encoded characters. I've seen examples of just
+this sort of thing when processing GMail messages and attempting to insert
+them into a UTF-8 database, as well as in some feeds processed by, say
+L<Yahoo! Pipes|http://pipes.yahoo.com>. Doesn't work so well. For such cases,
+there's C<fix_cp1252>, which converts those CP1252 gremlins into their UTF-8
+equivalents.
 
 =head1 Usage
 
-This module exports two subroutines: C<zap_cp1252()> and C<fix_cp1252()>.
-You use these subroutines like so:
+This module exports two subroutines: C<zap_cp1252()> and C<fix_cp1252()>,
+each of which accept a single argument:
 
   zap_cp1252 $text;
   fix_cp1252 $text;
 
-The C<zap_cp1252()> subroutine performs I<in place> conversions of any CP1252
-gremlins into their appropriate ASCII approximations, while C<fix_cp1252()>
-converts them, in place, into their UTF-8 equilvalents.
+When called in a void context, as in these examples, C<zap_cp1252()> and
+C<fix_cp1252()> subroutine perform I<in place> conversions of any CP1252
+gremlins into their appropriate ASCII approximations or UTF-8 equivalents,
+respectively. Note that because the conversion happens in place, the data to
+be converted I<cannot> be a string constant; it must be a scalar variable.
 
-Note that because the conversion happens in place, the data to be converted
-I<cannot> be a string constant; it must be a scalar variable. For convenience,
-the converted string is also returned when the subroutines are called in a
-non-void context:
+When called in a scalar or list context, on the other hand, a copy will be
+modifed and returned. The original string will be unchanged:
 
-  my $fixed = zap_cp1252 $text;
-  # $text and $fixed are the same.
+  my $clean_latin1 = zap_cp1252 $latin1_text;
+  my $fixed_utf8   = fix_cp1252 $utf8_text;
 
-In Perl 5.8 and higher, the conversion will work whether the string is decoded
-to Perl's internal form (usually via C<decode 'ISO-8859-1', $text>) or the
-string is encoded (and thus simply processed by Perl as a series of bytes).
-The conversion will even work on a string that has not been decoded but has
-had its C<utf8> flag flipped anyway (usually by an injudicious use of
-C<Encode::_utf8_on()>. This is to enable the highest possible likelyhood of
+In this case, even constant values can be processed. Either way, C<undef>s
+will be ignored.
+
+In Perl 5.8 and higher, the conversion will work even when the string is
+decoded to Perl's internal form (usually via C<decode 'ISO-8859-1', $text>) or
+the string is encoded (and thus simply processed by Perl as a series of
+bytes). The conversion will even work on a string that has not been decoded
+but has had its C<utf8> flag flipped anyway (usually by an injudicious use of
+C<Encode::_utf8_on()>. This is to enable the highest possible likelihood of
 removing those CP1252 gremlins no matter what kind of processing has already
 been executed on the string.
+
+In Perl 5.10 and higher, the functions may optionally be called with no
+arguments, in which case C<$_> will be converted, instead:
+
+  zap_cp1252; # Modify $_ in-place.
+  fix_cp1252; # Modify $_ in-place.
+  my $zapped = zap_cp1252; # Copy $_ and return zapped
+  my $fixed = zap_cp1252; # Copy $_ and return fixed
 
 =head1 Conversion Table
 
@@ -226,7 +244,7 @@ cleanup. If you want perfect, switch to UTF-8 and be done with it!
 
 =head2 Changing the Tables
 
-Don't like these conversions? You can modify them to your hearts content by
+Don't like these conversions? You can modify them to your heart's content by
 accessing this module's internal conversion tables. For example, if you wanted
 C<zap_cp1252()> to use an uppercase "E" for the euro sign, just do this:
 
@@ -238,7 +256,7 @@ C<zap_cp1252> for that!), you can do this:
 
   local $Encode::ZapCP1252::utf8_for{"\x95"} = '*';
 
-Just remember, without C<locala> this would be a global change. In that case,
+Just remember, without C<local> this would be a global change. In that case,
 be careful if your code zaps CP1252 elsewhere. Of course, it shouldn't really
 be doing that. These functions are just for cleaning up messes in one spot in
 your code, not for making a fundamental part of your text handling. For that,
@@ -266,16 +284,16 @@ L<bug-Encode-CP1252@rt.cpan.org|mailto:bug-Encode-CP1252@rt.cpan.org>.
 
 =head1 Author
 
-David Wheeler <david@kineticode.com>
+David E. Wheeler <david@justatheory.com>
 
-=head1 Acknowledgements
+=head1 Acknowledgments
 
 My thanks to Sean Burke for sending me his original method for converting
 CP1252 gremlins to more-or-less appropriate ASCII characters.
 
 =head1 Copyright and License
 
-Copyright (c) 2005-2010 Kineticode, Inc. Some Rights Reserved.
+Copyright (c) 2005-2010 David E. Wheeler. Some Rights Reserved.
 
 This module is free software; you can redistribute it and/or modify it under the
 same terms as Perl itself.
