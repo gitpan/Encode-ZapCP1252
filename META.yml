@@ -1,27 +1,30 @@
 ---
-name: Encode-ZapCP1252
-version: 0.12
+abstract: 'Zap Windows Western Gremlins'
 author:
   - 'David Wheeler <david@kineticode.com>'
-abstract: Zap Windows Western Gremlins
-license: perl
-resources:
-  license: http://dev.perl.org/licenses/
-configure_requires:
-  Module::Build: 0.2701
-requires:
-  perl: 5.006002
 build_requires:
-  Module::Build: 0.2701
+  Module::Build: 0.36
   Test::More: 0.17
-recommends:
-  Encode: 0
-  Test::Pod: 1.20
+configure_requires:
+  Module::Build: 0.36
+generated_by: 'Module::Build version 0.3611'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Encode-ZapCP1252
 provides:
   Encode::ZapCP1252:
     file: lib/Encode/ZapCP1252.pm
-    version: 0.12
-generated_by: Module::Build version 0.280801
-meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.2.html
-  version: 1.2
+    version: 0.20
+recommends:
+  Encode: 0
+  Test::Pod: 1.20
+requires:
+  perl: 5.006002
+resources:
+  bugtracker: http://github.com/theory/encode-cp1252/issues/
+  homepage: http://search.cpan.org/dist/Encode-CP1252/
+  license: http://dev.perl.org/licenses/
+  repository: http://github.com/theory/encode-cp1252/tree
+version: 0.20

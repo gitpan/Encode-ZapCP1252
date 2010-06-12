@@ -15,7 +15,7 @@ Description
     called "Windows Western" or "CP1252". So mostly things will come out
     right, but a few things--like curly quotes, m-dashes, elipses, and the
     like--will not. The differences are well-known; you see a nice chart at
-    documenting the differences on Wikipedia:
+    documenting the differences on Wikipedia
     <http://en.wikipedia.org/wiki/Windows-1252>.
 
     Of course, that won't really help you. What will help you is to quit
@@ -52,6 +52,20 @@ Usage
 
     Note that because the conversion happens in place, the data to be
     converted *cannot* be a string constant; it must be a scalar variable.
+    For convenience, the converted string is also returned when the
+    subroutines are called in a non-void context:
+
+      my $fixed = zap_cp1252 $text;
+      # $text and $fixed are the same.
+
+    In Perl 5.8 and higher, the conversion will work whether the string is
+    decoded to Perl's internal form (usually via "decode 'ISO-8859-1',
+    $text") or the string is encoded (and thus simply processed by Perl as a
+    series of bytes). The conversion will even work on a string that has not
+    been decoded but has had its "utf8" flag flipped anyway (usually by an
+    injudicious use of "Encode::_utf8_on()". This is to enable the highest
+    possible likelyhood of removing those CP1252 gremlins no matter what
+    kind of processing has already been executed on the string.
 
 Conversion Table
     Here's how the characters are converted to ASCII and UTF-8. The ASCII
@@ -88,37 +102,38 @@ Conversion Table
       0x9e |   ž   |   z   | LATIN SMALL LETTER Z WITH CARON
       0x9f |   Ÿ   |   Y   | LATIN CAPITAL LETTER Y WITH DIAERESIS
 
-  Changing the Table
+  Changing the Tables
     Don't like these conversions? You can modify them to your hearts content
     by accessing this module's internal conversion tables. For example, if
-    you wanted "zap_cp1252()" to use an uppercase E for the euro sign, just
-    do this:
+    you wanted "zap_cp1252()" to use an uppercase "E" for the euro sign,
+    just do this:
 
-      $Encode::ZapCP1252::ascii_for{"\x80"} = 'E';
+      local $Encode::ZapCP1252::ascii_for{"\x80"} = 'E';
 
     Or if, for some bizarre reason, you wanted the UTF-8 equivalent for a
     bullet converted by "fix_cp1252()" to really be an asterisk (why would
     you? Just use "zap_cp1252" for that!), you can do this:
 
-      $Encode::ZapCP1252::utf8_for{"\x95"} = '*';
+      local $Encode::ZapCP1252::utf8_for{"\x95"} = '*';
 
-    Just remember, this is a global change, so be careful if your code uses
-    this module elsewhere. Of course, it shouldn't really be doing that.
-    These functions are just for cleaning up messes in one spot in your
-    code, not for makeing a fundamental part of your text handling. For
-    that, use Encode.
+    Just remember, without "locala" this would be a global change. In that
+    case, be careful if your code zaps CP1252 elsewhere. Of course, it
+    shouldn't really be doing that. These functions are just for cleaning up
+    messes in one spot in your code, not for making a fundamental part of
+    your text handling. For that, use Encode.
 
 See Also
     Encode
-    <http://en.wikipedia.org/wiki/Windows-1252>
+    Wikipedia: Windows-1252 <http://en.wikipedia.org/wiki/Windows-1252>
 
 Support
-    This module is stored in an open repository at the following address:
+    This module is stored in an open GitHub repository
+    <http://github.com/theory/encode-cp1252/tree/>. Feel free to fork and
+    contribute!
 
-    <https://svn.kineticode.com/Encode-ZapCP1252/trunk/>
-
-    Patches against Encode::ZapCP1252 are welcome. Please send bug reports
-    to <bug-encode-zapcp1252@rt.cpan.org>.
+    Please file bug reports via GitHub Issues
+    <http://github.com/theory/encode-cp1252/issues/> or by sending mail to
+    bug-Encode-CP1252@rt.cpan.org <mailto:bug-Encode-CP1252@rt.cpan.org>.
 
 Author
     David Wheeler <david@kineticode.com>
@@ -128,7 +143,7 @@ Acknowledgements
     converting CP1252 gremlins to more-or-less appropriate ASCII characters.
 
 Copyright and License
-    Copyright (c) 2005-2008 Kineticode, Inc. Some Rights Reserved.
+    Copyright (c) 2005-2010 Kineticode, Inc. Some Rights Reserved.
 
     This module is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.

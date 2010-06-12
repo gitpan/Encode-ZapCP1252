@@ -1,15 +1,14 @@
 package Encode::ZapCP1252;
 
-# $Id: ZapCP1252.pm 3952 2008-05-30 16:55:42Z david $
-
 use strict;
 require Exporter;
 use vars qw($VERSION @ISA @EXPORT);
 use 5.006_002;
 
-$VERSION = '0.12';
+$VERSION = '0.20';
 @ISA     = qw(Exporter);
 @EXPORT  = qw(zap_cp1252 fix_cp1252);
+use constant ENCODE => eval { require Encode };
 
 our %ascii_for = (
     # http://en.wikipedia.org/wiki/Windows-1252
@@ -74,28 +73,47 @@ our %utf8_for = (
 );
 
 sub zap_cp1252 ($) {
-    $_[0] =~ s/([\x80-\x9f])/$ascii_for{$1} || $1/emxsg;
+    if (ENCODE && Encode::is_utf8($_[0])) {
+        _tweak_decoded(\%ascii_for, $_[0]);
+    } else {
+        $_[0] =~ s/([\x80-\x9f])/$ascii_for{$1} || $1/emxsg;
+    }
+    return $_[0] if defined wantarray;
 }
 
 sub fix_cp1252 ($) {
-    $_[0] =~ s/([\x80-\x9f])/$utf8_for{$1} || $1/emxsg;
+    if (ENCODE && Encode::is_utf8($_[0])) {
+        _tweak_decoded(\%utf8_for, $_[0]);
+    } else {
+        $_[0] =~ s/([\x80-\x9f])/$utf8_for{$1} || $1/emxsg;
+    }
+    return $_[0] if defined wantarray;
+}
+
+sub _tweak_decoded {
+    my $table = shift;
+    local $@;
+    # First, try to replace in the decoded string.
+    eval {
+        $_[0] =~ s{([\x80-\x9f])}{
+            $table->{$1} ? Encode::decode('UTF-8', $table->{$1}) : $1
+        }emxsg
+    };
+    if (my $err = $@) {
+        # If we got a "Malformed UTF-8 character" error, then someone
+        # likely turned on the utf8 flag without decoding. So turn it off.
+        # and try again.
+        die if $err !~ /Malformed/;
+        Encode::_utf8_off($_[0]);
+        $_[0] =~ s/([\x80-\x9f])/$table->{$1} || $1/emxsg;
+        Encode::_utf8_on($_[0]);
+    }
 }
 
 1;
 __END__
 
 ##############################################################################
-
-=begin comment
-
-Fake-out Module::Build. Delete if it ever changes to support =head1 headers
-other than all uppercase.
-
-=head1 NAME
-
-Encode::ZapCP1252 - Zap Windows Western Gremlins
-
-=end comment
 
 =head1 Name
 
@@ -116,8 +134,8 @@ because someone pasted in content from Microsoft Word? Well, this is because
 Microsoft uses a superset of the Latin-1 encoding called "Windows Western" or
 "CP1252". So mostly things will come out right, but a few things--like curly
 quotes, m-dashes, elipses, and the like--will not. The differences are
-well-known; you see a nice chart at documenting the differences on Wikipedia:
-L<http://en.wikipedia.org/wiki/Windows-1252>.
+well-known; you see a nice chart at documenting the differences on
+L<Wikipedia|http://en.wikipedia.org/wiki/Windows-1252>.
 
 Of course, that won't really help you. What will help you is to quit using
 Latin-1 and switch to UTF-8. Then you can just convert from CP1252 to UTF-8
@@ -152,7 +170,21 @@ gremlins into their appropriate ASCII approximations, while C<fix_cp1252()>
 converts them, in place, into their UTF-8 equilvalents.
 
 Note that because the conversion happens in place, the data to be converted
-I<cannot> be a string constant; it must be a scalar variable.
+I<cannot> be a string constant; it must be a scalar variable. For convenience,
+the converted string is also returned when the subroutines are called in a
+non-void context:
+
+  my $fixed = zap_cp1252 $text;
+  # $text and $fixed are the same.
+
+In Perl 5.8 and higher, the conversion will work whether the string is decoded
+to Perl's internal form (usually via C<decode 'ISO-8859-1', $text>) or the
+string is encoded (and thus simply processed by Perl as a series of bytes).
+The conversion will even work on a string that has not been decoded but has
+had its C<utf8> flag flipped anyway (usually by an injudicious use of
+C<Encode::_utf8_on()>. This is to enable the highest possible likelyhood of
+removing those CP1252 gremlins no matter what kind of processing has already
+been executed on the string.
 
 =head1 Conversion Table
 
@@ -192,55 +224,47 @@ cleanup. If you want perfect, switch to UTF-8 and be done with it!
   0x9e |   ž   |   z   | LATIN SMALL LETTER Z WITH CARON
   0x9f |   Ÿ   |   Y   | LATIN CAPITAL LETTER Y WITH DIAERESIS
 
-=head2 Changing the Table
+=head2 Changing the Tables
 
 Don't like these conversions? You can modify them to your hearts content by
 accessing this module's internal conversion tables. For example, if you wanted
-C<zap_cp1252()> to use an uppercase E for the euro sign, just do this:
+C<zap_cp1252()> to use an uppercase "E" for the euro sign, just do this:
 
-  $Encode::ZapCP1252::ascii_for{"\x80"} = 'E';
+  local $Encode::ZapCP1252::ascii_for{"\x80"} = 'E';
 
 Or if, for some bizarre reason, you wanted the UTF-8 equivalent for a bullet
 converted by C<fix_cp1252()> to really be an asterisk (why would you? Just use
 C<zap_cp1252> for that!), you can do this:
 
-  $Encode::ZapCP1252::utf8_for{"\x95"} = '*';
+  local $Encode::ZapCP1252::utf8_for{"\x95"} = '*';
 
-Just remember, this is a global change, so be careful if your code uses this
-module elsewhere. Of course, it shouldn't really be doing that. These
-functions are just for cleaning up messes in one spot in your code, not for
-makeing a fundamental part of your text handling. For that, use
-L<Encode|Encode>.
+Just remember, without C<locala> this would be a global change. In that case,
+be careful if your code zaps CP1252 elsewhere. Of course, it shouldn't really
+be doing that. These functions are just for cleaning up messes in one spot in
+your code, not for making a fundamental part of your text handling. For that,
+use L<Encode>.
 
 =head1 See Also
 
 =over
 
-=item L<Encode|Encode>
+=item L<Encode>
 
-=item L<http://en.wikipedia.org/wiki/Windows-1252>
+=item L<Wikipedia: Windows-1252|http://en.wikipedia.org/wiki/Windows-1252>
 
 =back
 
 =head1 Support
 
-This module is stored in an open repository at the following address:
+This module is stored in an open L<GitHub
+repository|http://github.com/theory/encode-cp1252/tree/>. Feel free to fork
+and contribute!
 
-L<https://svn.kineticode.com/Encode-ZapCP1252/trunk/>
-
-Patches against Encode::ZapCP1252 are welcome. Please send bug reports to
-<bug-encode-zapcp1252@rt.cpan.org>.
+Please file bug reports via L<GitHub
+Issues|http://github.com/theory/encode-cp1252/issues/> or by sending mail to
+L<bug-Encode-CP1252@rt.cpan.org|mailto:bug-Encode-CP1252@rt.cpan.org>.
 
 =head1 Author
-
-=begin comment
-
-Fake-out Module::Build. Delete if it ever changes to support =head1 headers
-other than all uppercase.
-
-=head1 AUTHOR
-
-=end comment
 
 David Wheeler <david@kineticode.com>
 
@@ -251,7 +275,7 @@ CP1252 gremlins to more-or-less appropriate ASCII characters.
 
 =head1 Copyright and License
 
-Copyright (c) 2005-2008 Kineticode, Inc. Some Rights Reserved.
+Copyright (c) 2005-2010 Kineticode, Inc. Some Rights Reserved.
 
 This module is free software; you can redistribute it and/or modify it under the
 same terms as Perl itself.

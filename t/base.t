@@ -1,9 +1,7 @@
 #!/usr/bin/perl -w
 
-# $Id: base.t 3701 2008-05-02 18:27:05Z david $
-
 use strict;
-use Test::More tests => 7;
+use Test::More tests => 11;
 
 BEGIN { use_ok 'Encode::ZapCP1252' or die; }
 
@@ -24,6 +22,15 @@ $fix_me = $cp1252;
 fix_cp1252 $fix_me;
 is $fix_me, $utf8, 'Convert to utf-8';
 
+# Try checking the return value, too.
+$fix_me = $cp1252;
+is fix_cp1252 $fix_me, $utf8, 'Check fixed return value';
+is $fix_me, $utf8, 'Should have been fixed in-place';
+
+$fix_me = $cp1252;
+is zap_cp1252 $fix_me, $ascii, 'Check zapped return value';
+is $fix_me, $ascii, 'Should have been zapped in-place';
+
 # Test conversion to ASCII with modified table.
 $Encode::ZapCP1252::ascii_for{"\x80"} = 'E';
 $ascii =~ s/^e/E/;
@@ -36,4 +43,4 @@ $Encode::ZapCP1252::utf8_for{"\x80"} = 'E';
 $utf8 =~ s/€/E/;
 $fix_me = $cp1252;
 fix_cp1252 $fix_me;
-is $fix_me, $utf8, 'Convert to ascii with modified table';
+is $fix_me, $utf8, 'Convert to utf-8 with modified table';
