@@ -7,4 +7,5 @@ META.yml
 README
 t/base.t
 t/decoded.t
+t/perl-510.t
 t/pod.t
