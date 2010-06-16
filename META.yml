@@ -16,7 +16,7 @@ name: Encode-ZapCP1252
 provides:
   Encode::ZapCP1252:
     file: lib/Encode/ZapCP1252.pm
-    version: 0.31
+    version: 0.32
 recommends:
   Encode: 0
   Test::Pod: 1.20
@@ -27,4 +27,4 @@ resources:
   homepage: http://search.cpan.org/dist/Encode-CP1252/
   license: http://dev.perl.org/licenses/
   repository: http://github.com/theory/encode-cp1252/tree
-version: 0.31
+version: 0.32

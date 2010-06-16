@@ -5,7 +5,7 @@ require Exporter;
 use vars qw($VERSION @ISA @EXPORT);
 use 5.006_002;
 
-$VERSION = '0.31';
+$VERSION = '0.32';
 @ISA     = qw(Exporter);
 @EXPORT  = qw(zap_cp1252 fix_cp1252);
 use constant ENCODE => eval { require Encode };
@@ -74,8 +74,8 @@ our %utf8_for = (
 
 BEGIN {
     my $proto = $] >= 5.010000 ? '_' : '$';
-    eval "sub zap_cp1252($proto) { _tweakit(\\%ascii_for, \$_[0]) }";
-    eval "sub fix_cp1252($proto) { _tweakit(\\%utf8_for, \$_[0]) }";
+    eval "sub zap_cp1252($proto) { unshift \@_, \\%ascii_for; &_tweakit; }";
+    eval "sub fix_cp1252($proto) { unshift \@_, \\%utf8_for;  &_tweakit; }";
 }
 
 sub _tweakit {
